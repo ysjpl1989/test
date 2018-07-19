@@ -8,10 +8,6 @@
 #include <QByteArray>
 #include <QDebug>
 
-//判断文件列表是否存在
-//bool isFileExist(QString fullFileName);
-
-
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget)
@@ -20,6 +16,7 @@ Widget::Widget(QWidget *parent) :
    // this->setWindowFlags(Qt::FramelessWindowHint);//隐藏标题栏
     setWindowTitle("music");
     flag = true;
+    i = 0;
     player = new QMediaPlayer;//创建多媒体对像
     mlist = new QMediaPlaylist; //播放列表
     list = "/home/red_fihs/playlist.txt";//播放列表存储位置
@@ -27,7 +24,9 @@ Widget::Widget(QWidget *parent) :
     mlist->setPlaybackMode(QMediaPlaylist::Loop);
     //查看是否有播放列表
     checklist();
-
+    connect(player, &QMediaPlayer::durationChanged, this, &Widget::updateprogress);
+    connect(player,&QMediaPlayer::positionChanged,this,&Widget::updatePosition);//更新进度条
+    connect(ui->horizontalSlider,&QSlider::sliderMoved,player,&QMediaPlayer::setPosition);//控制播放进度
     connect(ui->addlist, &QPushButton::clicked, this, &Widget::addplaylist);
 }
 
@@ -49,24 +48,32 @@ void Widget::on_play_clicked()
         player->pause();
         flag = true;
     }
+    //更新标签
+    updatelabel();
 }
-
 
 //下一首
 void Widget::on_next_clicked()
 {
    mlist->next();
+    i = mlist->currentIndex();
    flag = true;
    on_play_clicked();
 }
-
 
 //上一首
 void Widget::on_back_clicked()
 {
     mlist->previous();
+    i = mlist->currentIndex();
     flag = true;
     on_play_clicked();
+}
+
+//正在播放标签
+void Widget::updatelabel()
+{
+    ui->label_3->setText(listname.at(i));
 }
 
 //添加播放列表
@@ -74,9 +81,9 @@ void Widget::addplaylist()
 {
       QString  initdir = QDir::homePath();//当前路径
       QStringList playlist = QFileDialog::getOpenFileNames(this, tr("选择文件"), initdir, tr("*.mp3","*.wmv"));
-      myaddlist( playlist);
       //保存列表
       savelist(playlist);
+      checklist();
 }
 
 //保存列表
@@ -91,7 +98,7 @@ void Widget::savelist(QStringList playlist)
             QString name = playlist.at(i);
             QByteArray ba = name.toLocal8Bit();
             file.write(ba.data());
-            file.write("\n");
+            file.write("#");
         }
     }
 
@@ -103,10 +110,10 @@ void Widget::savelist(QStringList playlist)
                 QString name = playlist.at(i);
                 QByteArray ba = name.toLocal8Bit();
                 file.write(ba.data());
-                file.write("\n");
+                file.write("#");
              }
-          file.close();
           }
+          file.close();
 }
 
 //判断文件是否存在
@@ -119,7 +126,7 @@ bool Widget::isFileExist(QString fullFileName)
 //添加列表核心代码
 void Widget::myaddlist(QStringList mylist)
 {
-    QStringList listname;
+    listname.clear();
     for (int i = 0; i < mylist.size(); i++)
     {
         QString filename = mylist.at(i);
@@ -128,6 +135,7 @@ void Widget::myaddlist(QStringList mylist)
         listname << fi.fileName();// 去掉路径文件列表
     }
    //更新显示
+    ui->listWidget->clear();
     ui->listWidget->setViewMode(QListView::ListMode);
     ui->listWidget->addItems(listname);
 }
@@ -142,8 +150,30 @@ void Widget::checklist()
         {
                QByteArray str = mm.readAll();
                QString mlst(str);
-               QStringList mylist  = mlst.split("\n");
+               QStringList mylist  = mlst.split("#");
                myaddlist(mylist);//保存
         }
     }
+}
+
+void Widget::updateprogress(qint64 duration)
+{
+    ui->horizontalSlider->setRange(0,duration);
+    ui->horizontalSlider->setEnabled(duration);
+    ui->horizontalSlider->setPageStep(duration);
+}
+
+//转换时间
+static QString Time(qint64 t)
+{
+    qint64 second = t/1000;
+    qint64 minter = second/60;
+    return QString("%1:%2").arg(minter).arg(second%60);
+}
+
+//更新进度条
+void Widget::updatePosition(qint64 position)
+{
+    ui->horizontalSlider->setValue(position);
+    ui->label->setText(Time(position)+"/"+Time(player->duration()));
 }

@@ -26,9 +26,15 @@ public:
 
     void checklist();//检查是否存在播放列表
 
-    void savelist(QStringList playlist);
+    void savelist(QStringList playlist); //保存列表到本地文件
 
-    bool isFileExist(QString fullFileName);
+    bool isFileExist(QString fullFileName); //判断文件是否存在
+
+    void updateprogress(qint64 duration); //更新进度
+
+    void updatePosition(qint64 position);
+
+   void updatelabel();
 
 private slots:
     void on_next_clicked();
@@ -42,7 +48,9 @@ private:
    QMediaPlayer* player; //多媒体对象
    QMediaPlaylist* mlist;//播放列表
    bool flag; //播放暂停标记
-   QString list;
+   QString list; //本 地保存播放记录
+   QStringList listname; //去路径播放列表
+   int i; //当前播放歌曲在表中的下标
    //QFile savelist;
 };
 
